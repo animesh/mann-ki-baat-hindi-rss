@@ -1,6 +1,8 @@
 from datetime import datetime, timezone
 from pathlib import Path
 import hashlib
+import os
+import tempfile
 
 from feedgen.feed import FeedGenerator
 from yt_dlp import YoutubeDL
@@ -17,12 +19,31 @@ SITE_URL = (
     "mann-ki-baat-hindi-rss/feed.xml"
 )
 
+cookiefile_path = os.environ.get("YTDLP_COOKIES_PATH")
+cookiefile_content = os.environ.get("YTDLP_COOKIES")
+created_cookiefile = None
+
+if cookiefile_content and not cookiefile_path:
+    temp_cookie = tempfile.NamedTemporaryFile(delete=False, mode="w", encoding="utf-8")
+    temp_cookie.write(cookiefile_content)
+    temp_cookie.close()
+    cookiefile_path = temp_cookie.name
+    created_cookiefile = temp_cookie.name
+
+if not cookiefile_path:
+    print(
+        "WARNING: YTDLP_COOKIES is not set. YouTube extraction may fail due to sign-in/bot checks."
+    )
+
 playlist_opts = {
     "quiet": True,
     "extract_flat": True,
     "skip_download": True,
     "js_runtimes": {"deno": {}},
 }
+
+if cookiefile_path:
+    playlist_opts["cookiefile"] = cookiefile_path
 
 with YoutubeDL(playlist_opts) as ydl:
     playlist = ydl.extract_info(
@@ -57,6 +78,9 @@ video_opts = {
     "skip_download": True,
     "js_runtimes": {"deno": {}},
 }
+
+if cookiefile_path:
+    video_opts["cookiefile"] = cookiefile_path
 
 count = 0
 
@@ -168,5 +192,8 @@ OUTPUT.parent.mkdir(
 )
 
 fg.rss_file(str(OUTPUT))
+
+if created_cookiefile:
+    os.remove(created_cookiefile)
 
 print(f"Generated RSS with {count} podcast episodes")

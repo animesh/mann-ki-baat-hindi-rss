@@ -25,6 +25,10 @@ Automatically generates a Hindi-only RSS feed for Mann Ki Baat and publishes it 
    - Branch: `main`
    - Folder: `/docs`
 
+### GitHub Actions auth
+
+The workflow may need YouTube login cookies to extract episode metadata. Set a repository secret named `YTDLP_COOKIES` with exported YouTube cookies so `scripts/generate_feed.py` can use them during `yt_dlp` extraction.
+
 ## Published URLs
 
 - Feed: `https://animesh.github.io/mann-ki-baat-hindi-rss/feed.xml`

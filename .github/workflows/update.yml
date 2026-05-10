@@ -42,6 +42,8 @@ jobs:
           pip install -r requirements.txt
 
       - name: Generate RSS feed
+        env:
+          YTDLP_COOKIES: ${{ secrets.YTDLP_COOKIES }}
         run: |
           python scripts/generate_feed.py
 
