@@ -21,6 +21,7 @@ playlist_opts = {
     "quiet": True,
     "extract_flat": True,
     "skip_download": True,
+    "js_runtimes": "deno",
 }
 
 with YoutubeDL(playlist_opts) as ydl:
@@ -54,6 +55,7 @@ fg.podcast.itunes_summary(
 video_opts = {
     "quiet": True,
     "skip_download": True,
+    "js_runtimes": "deno",
 }
 
 count = 0
