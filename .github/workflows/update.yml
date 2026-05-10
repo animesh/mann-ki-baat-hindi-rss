@@ -1,67 +1,53 @@
-name: Update Hindi RSS Feed
+name: Update Podcast Feed
 
 on:
   push:
     branches:
       - main
-
   workflow_dispatch:
-
   schedule:
-    # Every hour on the last Sunday of every month
-    - cron: '0 * 25-31 * 0'
+    - cron: '0 * * * 0'
 
 permissions:
   contents: write
+
+concurrency:
+  group: rss-feed
+  cancel-in-progress: true
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
           ref: main
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
 
-      - name: Install system dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y ffmpeg
-          curl -fsSL https://deno.land/install.sh | sh
-          echo "$HOME/.deno/bin" >> $GITHUB_PATH
-
-      - name: Install dependencies
-        run: |
-          pip install -r requirements.txt
+      - run: pip install -r requirements.txt
 
       - name: Generate RSS feed
         env:
           YTDLP_COOKIES: ${{ secrets.YTDLP_COOKIES }}
-        run: |
-          python scripts/generate_feed.py
+        run: python scripts/generate_feed.py
 
-      - name: Commit updated feed
-        if: github.ref == 'refs/heads/main'
-        run: |
+      - run: grep enclosure docs/feed.xml
+
+      - run: |
           git config user.name github-actions
           git config user.email github-actions@github.com
-
           git add docs/feed.xml
-
           if ! git diff --cached --quiet; then
             git pull --rebase --autostash origin main
-            git commit -m "Update Hindi RSS feed"
+            git commit -m "Update podcast feed"
             git push origin HEAD:main
           fi
