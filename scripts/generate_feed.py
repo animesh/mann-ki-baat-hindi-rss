@@ -4,6 +4,7 @@ import hashlib
 import os
 import re
 import tempfile
+import xml.etree.ElementTree as ET
 
 from feedgen.feed import FeedGenerator
 from yt_dlp import YoutubeDL
@@ -192,9 +193,45 @@ OUTPUT.parent.mkdir(
     exist_ok=True
 )
 
-fg.rss_file(str(OUTPUT))
+temp_output = OUTPUT.with_suffix(".tmp.xml")
+fg.rss_file(str(temp_output))
+
+xml_text = temp_output.read_text(encoding="utf-8")
+xml_text = re.sub(r"<lastBuildDate>.*?</lastBuildDate>", "", xml_text, flags=re.DOTALL).strip()
+
+
+def feed_items(xml):
+    items = []
+    try:
+        root = ET.fromstring(xml)
+        channel = root.find("channel")
+        if channel is None:
+            return items
+
+        for item in channel.findall("item"):
+            guid_elem = item.find("guid")
+            guid = guid_elem.text if guid_elem is not None else None
+            enclosure = item.find("enclosure")
+            url = enclosure.get("url") if enclosure is not None else None
+            items.append((guid, url))
+    except Exception as e:
+        print("XML parse error:", e)
+    return items
+
+new_items = feed_items(xml_text)
+old_items = []
+if OUTPUT.exists():
+    old_text = OUTPUT.read_text(encoding="utf-8")
+    old_text = re.sub(r"<lastBuildDate>.*?</lastBuildDate>", "", old_text, flags=re.DOTALL).strip()
+    old_items = feed_items(old_text)
+
+if old_items == new_items:
+    temp_output.unlink()
+    print("No feed entry changes detected; docs/feed.xml not updated.")
+else:
+    OUTPUT.write_text(xml_text, encoding="utf-8")
+    temp_output.unlink()
+    print(f"Generated RSS with {count} podcast episodes")
 
 if created_cookiefile:
     os.remove(created_cookiefile)
-
-print(f"Generated RSS with {count} podcast episodes")
