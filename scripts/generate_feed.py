@@ -2,6 +2,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 import hashlib
 import os
+import re
 import tempfile
 
 from feedgen.feed import FeedGenerator
