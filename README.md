@@ -44,3 +44,10 @@ Automatically generates a Hindi-only RSS feed for Mann Ki Baat and publishes it 
 pip install -r requirements.txt
 python scripts/generate_feed.py
 ```
+
+## Original feed 
+
+https://www.youtube.com/playlist?list=PLBG6UuYpOcTvg9ALz7cJelclMi1oc7TQp
+
+## Feed testing
+https://www.castfeedvalidator.com/validate.php?url=https://animesh.github.io/mann-ki-baat-hindi-rss/feed.xml

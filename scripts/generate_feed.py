@@ -83,9 +83,9 @@ for entry in entries:
 
         media_url = None
         media_type = "audio/mp4"
+        media_length = None
 
         for f in formats:
-
             ext = f.get("ext")
             acodec = f.get("acodec")
             vcodec = f.get("vcodec")
@@ -96,20 +96,27 @@ for entry in entries:
                 and vcodec == "none"
             ):
                 media_url = f.get("url")
+                media_length = f.get("filesize") or f.get("filesize_approx")
+                if ext == "m4a":
+                    media_type = "audio/mp4"
+                else:
+                    media_type = "video/mp4"
                 break
 
         if not media_url:
-
             for f in formats:
-
                 ext = f.get("ext")
 
                 if ext == "mp4":
                     media_url = f.get("url")
+                    media_length = f.get("filesize") or f.get("filesize_approx")
                     media_type = "video/mp4"
                     break
 
         if not media_url:
+            continue
+
+        if not media_length:
             continue
 
         count += 1
@@ -135,7 +142,7 @@ for entry in entries:
 
         fe.enclosure(
             media_url,
-            0,
+            media_length,
             media_type
         )
 
