@@ -27,7 +27,11 @@ Automatically generates a Hindi-only RSS feed for Mann Ki Baat and publishes it 
 
 ### GitHub Actions auth
 
-The workflow may need YouTube login cookies to extract episode metadata. Set a repository secret named `YTDLP_COOKIES` with exported YouTube cookies so `scripts/generate_feed.py` can use them during `yt_dlp` extraction.
+The workflow may need YouTube login cookies to extract episode metadata.
+
+Set a repository secret named `YTDLP_COOKIES` with raw YouTube cookies in Netscape `cookies.txt` format. The secret should contain multiline cookie content, not a JSON object or `Set-Cookie` header string.
+
+If you export cookies from your browser, use a tool that produces a standard `cookies.txt` file and paste the exact contents into the secret value.
 
 ## Published URLs
 

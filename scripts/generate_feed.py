@@ -26,6 +26,8 @@ cookiefile_content = os.environ.get("YTDLP_COOKIES")
 created_cookiefile = None
 
 if cookiefile_content and not cookiefile_path:
+    cookiefile_content = cookiefile_content.replace("\\r\\n", "\n").replace("\\n", "\n")
+    cookiefile_content = cookiefile_content.strip() + "\n"
     temp_cookie = tempfile.NamedTemporaryFile(delete=False, mode="w", encoding="utf-8")
     temp_cookie.write(cookiefile_content)
     temp_cookie.close()

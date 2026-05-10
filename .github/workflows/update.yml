@@ -33,6 +33,11 @@ jobs:
         with:
           node-version: '22'
 
+      - name: Install Deno
+        run: |
+          curl -fsSL https://deno.land/install.sh | sh
+          echo "$HOME/.deno/bin" >> $GITHUB_PATH
+
       - run: pip install -r requirements.txt
 
       - name: Generate RSS feed
