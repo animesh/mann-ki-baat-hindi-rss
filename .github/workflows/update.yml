@@ -38,8 +38,13 @@ jobs:
         with:
           deno-version: v1
 
+      - name: Add Deno to PATH
+        run: echo "$HOME/.deno/bin" >> $GITHUB_PATH
+
       - name: Verify Deno
-        run: deno --version
+        run: |
+          which deno
+          deno --version
 
       - run: pip install -r requirements.txt
 

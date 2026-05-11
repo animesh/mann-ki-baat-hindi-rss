@@ -28,6 +28,18 @@ created_cookiefile = None
 if cookiefile_content and not cookiefile_path:
     cookiefile_content = cookiefile_content.replace("\r\n", "\n").replace("\r", "\n")
     cookiefile_content = cookiefile_content.strip() + "\n"
+    if cookiefile_content.strip() == "***":
+        raise SystemExit(
+            "YTDLP_COOKIES appears to be masked or invalid. "
+            "Set the raw cookies.txt contents as the secret, not a placeholder."
+        )
+    lines = [line for line in cookiefile_content.split("\n") if line.strip()]
+    cookie_lines = [line for line in lines if "\t" in line and not line.lstrip().startswith("#")]
+    if not cookie_lines:
+        raise SystemExit(
+            "YTDLP_COOKIES does not appear to be a valid Netscape cookies.txt file. "
+            "Export raw cookies.txt content and set that as the GitHub secret."
+        )
     temp_cookie = tempfile.NamedTemporaryFile(delete=False, mode="w", encoding="utf-8")
     temp_cookie.write(cookiefile_content)
     temp_cookie.close()
