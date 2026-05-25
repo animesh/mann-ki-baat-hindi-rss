@@ -17,6 +17,7 @@ concurrency:
 
 jobs:
   build:
+    if: github.actor != 'github-actions'
     runs-on: ubuntu-latest
 
     steps:
@@ -28,8 +29,6 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-
-      - run: pip install -r requirements.txt
 
       - name: Generate RSS feed
         run: python scripts/generate_feed.py
