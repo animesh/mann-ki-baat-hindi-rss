@@ -63,15 +63,12 @@ def parse_public_playlist_feed():
                 calendar.timegm(published_parsed), tz=timezone.utc
             )
 
-        description = entry.get("media_description") or entry.get("summary", "")
-
         results.append(
             {
                 "video_id": video_id,
                 "title": entry.get("title", "Mann Ki Baat"),
                 "link": link,
                 "published": published,
-                "description": description,
             }
         )
 
@@ -125,8 +122,8 @@ for entry in entries:
     fe.guid(guid, permalink=False)
     fe.title(entry["title"])
     fe.link(href=entry["link"])
-    fe.description(entry["description"][:4000])
-    if entry["published"]:
+    fe.enclosure(entry["link"], 0, "video/mp4")
+    if entry.get("published"):
         fe.pubDate(entry["published"])
     count += 1
 
@@ -138,16 +135,14 @@ fg.rss_file(str(temp_output))
 xml_text = temp_output.read_text(encoding="utf-8")
 xml_text = re.sub(r"<lastBuildDate>.*?</lastBuildDate>", "", xml_text, flags=re.DOTALL).strip()
 
-new_items = feed_items(xml_text)
-old_items = []
+old_text = ""
 if OUTPUT.exists():
     old_text = OUTPUT.read_text(encoding="utf-8")
     old_text = re.sub(r"<lastBuildDate>.*?</lastBuildDate>", "", old_text, flags=re.DOTALL).strip()
-    old_items = feed_items(old_text)
 
-if old_items == new_items:
+if old_text == xml_text:
     temp_output.unlink()
-    print("No feed entry changes detected; docs/feed.xml not updated.")
+    print("No feed content changes detected; docs/feed.xml not updated.")
 else:
     OUTPUT.write_text(xml_text, encoding="utf-8")
     temp_output.unlink()
