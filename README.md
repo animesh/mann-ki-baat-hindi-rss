@@ -1,18 +1,16 @@
 # Mann Ki Baat Hindi RSS
 
-Automatically generates a Hindi-only RSS feed for Mann Ki Baat and publishes it through GitHub Pages.
+Automatically generates a Hindi-only RSS feed for Mann Ki Baat and publishes at https://animesh.github.io/mann-ki-baat-hindi-rss/feed.xml.
 
 ## Features
 
-- Extracts Hindi Mann Ki Baat episodes from YouTube search results
-- Filters out unrelated language editions
-- Deduplicates episodes by number
-- Generates `docs/feed.xml`
-- Publishes via GitHub Pages
+- Generates a Hindi-only RSS feed from a public YouTube playlist
+- Filters out AI-generated and reupload entries from the playlist
+- Writes `docs/feed.xml` for GitHub Pages publication
 - Auto-updates on:
   - every push
   - manual workflow dispatch
-  - every hour on the last Sunday of every month
+  - daily at 12:00 GMT via GitHub Actions schedule
 
 ## Setup
 
@@ -27,24 +25,12 @@ Automatically generates a Hindi-only RSS feed for Mann Ki Baat and publishes it 
 
 ### GitHub Actions auth
 
-The workflow may need YouTube login cookies to extract episode metadata.
-
-Set a repository secret named `YTDLP_COOKIES` with raw YouTube cookies in Netscape `cookies.txt` format. The secret should contain multiline cookie content, not a JSON object or `Set-Cookie` header string.
-
-If you export cookies from your browser, use a tool that produces a standard `cookies.txt` file and paste the exact contents into the secret value.
+No login cookies are required for this feed. The generator uses YouTube's public playlist RSS feed and works without secrets.
 
 ## Published URLs
 
 - Feed: `https://animesh.github.io/mann-ki-baat-hindi-rss/feed.xml`
 - Site root: `https://animesh.github.io/mann-ki-baat-hindi-rss/`
-
-## What changed
-
-- Updated `scripts/generate_feed.py` to use the actual GitHub Pages URL
-- Regenerated `docs/feed.xml`
-- Added `docs/index.html` so the root URL resolves
-- Left the official-channel filter in place as commented-out code for later use
-- Confirmed workflow `.github/workflows/update.yml` runs on push, manual dispatch, and schedule
 
 ## Local testing
 
@@ -53,9 +39,16 @@ pip install -r requirements.txt
 python scripts/generate_feed.py
 ```
 
-## Original feed 
+Verified locally:
 
-https://www.youtube.com/playlist?list=PLBG6UuYpOcTvg9ALz7cJelclMi1oc7TQp
+- generator compiles cleanly
+- feed generation completes successfully
+- `docs/feed.xml` contains the latest playlist items
+
+## Feed source
+
+Public playlist: https://www.youtube.com/playlist?list=PLBG6UuYpOcTvg9ALz7cJelclMi1oc7TQp
 
 ## Feed testing
+
 https://www.castfeedvalidator.com/validate.php?url=https://animesh.github.io/mann-ki-baat-hindi-rss/feed.xml

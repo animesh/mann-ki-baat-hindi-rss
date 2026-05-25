@@ -6,7 +6,7 @@ on:
       - main
   workflow_dispatch:
   schedule:
-    - cron: '0 * * * 0'
+    - cron: '0 12 * * *'
 
 permissions:
   contents: write
@@ -29,31 +29,10 @@ jobs:
         with:
           python-version: '3.11'
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-
-      - name: Setup Deno
-        uses: denoland/setup-deno@v1
-        with:
-          deno-version: v1
-
-      - name: Add Deno to PATH
-        run: echo "$HOME/.deno/bin" >> $GITHUB_PATH
-
-      - name: Verify Deno
-        run: |
-          which deno
-          deno --version
-
       - run: pip install -r requirements.txt
 
       - name: Generate RSS feed
-        env:
-          YTDLP_COOKIES: ${{ secrets.YTDLP_COOKIES }}
         run: python scripts/generate_feed.py
-
-      - run: grep enclosure docs/feed.xml
 
       - run: |
           git config user.name github-actions

@@ -1,217 +1,85 @@
 from datetime import datetime, timezone
 from pathlib import Path
+import calendar
 import hashlib
-import os
 import re
-import tempfile
+import urllib.request
 import xml.etree.ElementTree as ET
 
+import feedparser
 from feedgen.feed import FeedGenerator
-from yt_dlp import YoutubeDL
 
-PLAYLIST_URL = (
-    "https://www.youtube.com/playlist"
-    "?list=PLBG6UuYpOcTvg9ALz7cJelclMi1oc7TQp"
+PLAYLIST_ID = "PLBG6UuYpOcTvg9ALz7cJelclMi1oc7TQp"
+PLAYLIST_FEED = (
+    f"https://www.youtube.com/feeds/videos.xml?playlist_id={PLAYLIST_ID}"
 )
 
 OUTPUT = Path("docs/feed.xml")
+SITE_URL = "https://animesh.github.io/mann-ki-baat-hindi-rss/feed.xml"
 
-SITE_URL = (
-    "https://animesh.github.io/"
-    "mann-ki-baat-hindi-rss/feed.xml"
-)
 
-cookiefile_path = os.environ.get("YTDLP_COOKIES_PATH")
-cookiefile_content = os.environ.get("YTDLP_COOKIES")
-created_cookiefile = None
+def is_ai_generated(entry):
+    title = entry.get("title", "").lower()
+    description = (entry.get("media_description") or entry.get("summary", "")).lower()
+    if "ai generated" in title or "ai generated" in description:
+        return True
+    if "ai tech" in description or "ai voice" in description:
+        return True
+    return False
 
-if cookiefile_content and not cookiefile_path:
-    cookiefile_content = cookiefile_content.replace("\r\n", "\n").replace("\r", "\n")
-    cookiefile_content = cookiefile_content.strip() + "\n"
-    if cookiefile_content.strip() == "***":
-        raise SystemExit(
-            "YTDLP_COOKIES appears to be masked or invalid. "
-            "Set the raw cookies.txt contents as the secret, not a placeholder."
-        )
-    lines = [line for line in cookiefile_content.split("\n") if line.strip()]
-    cookie_lines = [line for line in lines if "\t" in line and not line.lstrip().startswith("#")]
-    if not cookie_lines:
-        raise SystemExit(
-            "YTDLP_COOKIES does not appear to be a valid Netscape cookies.txt file. "
-            "Export raw cookies.txt content and set that as the GitHub secret."
-        )
-    temp_cookie = tempfile.NamedTemporaryFile(delete=False, mode="w", encoding="utf-8")
-    temp_cookie.write(cookiefile_content)
-    temp_cookie.close()
-    cookiefile_path = temp_cookie.name
-    created_cookiefile = temp_cookie.name
 
-if not cookiefile_path:
-    print(
-        "WARNING: YTDLP_COOKIES is not set. YouTube extraction may fail due to sign-in/bot checks."
-    )
+def parse_public_playlist_feed():
+    feed = feedparser.parse(PLAYLIST_FEED)
 
-playlist_opts = {
-    "quiet": True,
-    "extract_flat": True,
-    "skip_download": True,
-    "js_runtimes": {"deno": {}},
-}
+    if getattr(feed, "bozo", False):
+        print("WARNING: failed to parse playlist feed:", feed.bozo_exception)
 
-if cookiefile_path:
-    playlist_opts["cookiefile"] = cookiefile_path
+    results = []
+    for entry in feed.entries:
+        if is_ai_generated(entry):
+            continue
 
-with YoutubeDL(playlist_opts) as ydl:
-    playlist = ydl.extract_info(
-        PLAYLIST_URL,
-        download=False
-    )
+        video_id = entry.get("yt_videoid")
+        if not video_id:
+            entry_id = entry.get("id", "")
+            if entry_id.startswith("yt:video:"):
+                video_id = entry_id.split(":", 2)[-1]
 
-entries = playlist.get("entries", [])
+        if not video_id:
+            continue
 
-fg = FeedGenerator()
+        link = None
+        for link_object in entry.get("links", []):
+            if link_object.get("rel") == "alternate":
+                link = link_object.get("href")
+                break
+        if not link:
+            link = f"https://www.youtube.com/watch?v={video_id}"
 
-fg.load_extension("podcast")
-
-fg.id(SITE_URL)
-fg.title("Mann Ki Baat Hindi")
-fg.author({"name": "PMO India"})
-fg.link(href=SITE_URL, rel="self")
-fg.language("hi")
-fg.description(
-    "Unofficial Hindi podcast feed for Mann Ki Baat"
-)
-
-fg.podcast.itunes_author("PMO India")
-fg.podcast.itunes_category("Government")
-fg.podcast.itunes_explicit("no")
-fg.podcast.itunes_summary(
-    "Hindi editions of Mann Ki Baat"
-)
-
-video_opts = {
-    "quiet": True,
-    "skip_download": True,
-    "js_runtimes": {"deno": {}},
-}
-
-if cookiefile_path:
-    video_opts["cookiefile"] = cookiefile_path
-
-count = 0
-
-for entry in entries:
-
-    video_id = entry.get("id")
-
-    if not video_id:
-        continue
-
-    video_url = (
-        f"https://www.youtube.com/watch?v={video_id}"
-    )
-
-    try:
-
-        with YoutubeDL(video_opts) as ydl:
-            info = ydl.extract_info(
-                video_url,
-                download=False
+        published = None
+        published_parsed = entry.get("published_parsed") or entry.get("updated_parsed")
+        if published_parsed:
+            published = datetime.fromtimestamp(
+                calendar.timegm(published_parsed), tz=timezone.utc
             )
 
-        title = info.get("title", "Mann Ki Baat")
+        description = entry.get("media_description") or entry.get("summary", "")
 
-        formats = info.get("formats", [])
-
-        media_url = None
-        media_type = "audio/mp4"
-        media_length = None
-
-        for f in formats:
-            ext = f.get("ext")
-            acodec = f.get("acodec")
-            vcodec = f.get("vcodec")
-
-            if (
-                ext in ("m4a", "mp4")
-                and acodec != "none"
-                and vcodec == "none"
-            ):
-                media_url = f.get("url")
-                media_length = f.get("filesize") or f.get("filesize_approx")
-                if ext == "m4a":
-                    media_type = "audio/mp4"
-                else:
-                    media_type = "video/mp4"
-                break
-
-        if not media_url:
-            for f in formats:
-                ext = f.get("ext")
-
-                if ext == "mp4":
-                    media_url = f.get("url")
-                    media_length = f.get("filesize") or f.get("filesize_approx")
-                    media_type = "video/mp4"
-                    break
-
-        if not media_url:
-            continue
-
-        if not media_length:
-            continue
-
-        count += 1
-
-        fe = fg.add_entry()
-
-        guid = hashlib.md5(
-            video_url.encode()
-        ).hexdigest()
-
-        fe.id(guid)
-        fe.guid(guid, permalink=False)
-
-        fe.title(title)
-
-        fe.link(href=video_url)
-
-        description = (
-            info.get("description", "")[:4000]
+        results.append(
+            {
+                "video_id": video_id,
+                "title": entry.get("title", "Mann Ki Baat"),
+                "link": link,
+                "published": published,
+                "description": description,
+            }
         )
 
-        fe.description(description)
+    return results
 
-        fe.enclosure(
-            media_url,
-            media_length,
-            media_type
-        )
 
-        upload_date = info.get("upload_date")
-
-        if upload_date:
-
-            dt = datetime.strptime(
-                upload_date,
-                "%Y%m%d"
-            ).replace(tzinfo=timezone.utc)
-
-            fe.pubDate(dt)
-
-    except Exception as e:
-        print("ERROR:", e)
-
-OUTPUT.parent.mkdir(
-    parents=True,
-    exist_ok=True
-)
-
-temp_output = OUTPUT.with_suffix(".tmp.xml")
-fg.rss_file(str(temp_output))
-
-xml_text = temp_output.read_text(encoding="utf-8")
-xml_text = re.sub(r"<lastBuildDate>.*?</lastBuildDate>", "", xml_text, flags=re.DOTALL).strip()
+def parse_playlist_entries():
+    return parse_public_playlist_feed()
 
 
 def feed_items(xml):
@@ -232,6 +100,44 @@ def feed_items(xml):
         print("XML parse error:", e)
     return items
 
+
+entries = parse_playlist_entries()
+
+fg = FeedGenerator()
+fg.load_extension("podcast")
+fg.id(SITE_URL)
+fg.title("Mann Ki Baat Hindi")
+fg.author({"name": "PMO India"})
+fg.link(href=SITE_URL, rel="self")
+fg.language("hi")
+fg.description("Unofficial Hindi feed for Mann Ki Baat")
+
+fg.podcast.itunes_author("PMO India")
+fg.podcast.itunes_category("Government")
+fg.podcast.itunes_explicit("no")
+fg.podcast.itunes_summary("Hindi editions of Mann Ki Baat")
+
+count = 0
+for entry in entries:
+    fe = fg.add_entry()
+    guid = hashlib.md5(entry["link"].encode()).hexdigest()
+    fe.id(guid)
+    fe.guid(guid, permalink=False)
+    fe.title(entry["title"])
+    fe.link(href=entry["link"])
+    fe.description(entry["description"][:4000])
+    if entry["published"]:
+        fe.pubDate(entry["published"])
+    count += 1
+
+OUTPUT.parent.mkdir(parents=True, exist_ok=True)
+
+temp_output = OUTPUT.with_suffix(".tmp.xml")
+fg.rss_file(str(temp_output))
+
+xml_text = temp_output.read_text(encoding="utf-8")
+xml_text = re.sub(r"<lastBuildDate>.*?</lastBuildDate>", "", xml_text, flags=re.DOTALL).strip()
+
 new_items = feed_items(xml_text)
 old_items = []
 if OUTPUT.exists():
@@ -245,7 +151,4 @@ if old_items == new_items:
 else:
     OUTPUT.write_text(xml_text, encoding="utf-8")
     temp_output.unlink()
-    print(f"Generated RSS with {count} podcast episodes")
-
-if created_cookiefile:
-    os.remove(created_cookiefile)
+    print(f"Generated RSS with {count} episodes")

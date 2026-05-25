@@ -1,4 +1,2 @@
 feedgen
 feedparser
-yt_dlp
-yt_dlp_ejs
