@@ -8,6 +8,7 @@ import xml.etree.ElementTree as ET
 
 import feedparser
 from feedgen.feed import FeedGenerator
+from yt_dlp import YoutubeDL
 
 PLAYLIST_ID = "PLBG6UuYpOcTvg9ALz7cJelclMi1oc7TQp"
 PLAYLIST_FEED = (
@@ -18,8 +19,8 @@ OUTPUT = Path("docs/feed.xml")
 FEED_URL = "https://animesh.github.io/mann-ki-baat-hindi-rss/feed.xml"
 SITE_URL = "https://animesh.github.io/mann-ki-baat-hindi-rss/"
 ARTWORK_URL = "https://animesh.github.io/mann-ki-baat-hindi-rss/artwork.png"
-AUDIO_ENCLOSURE_URL = "https://file-examples.com/wp-content/uploads/2017/11/file_example_MP3_700KB.mp3"
-AUDIO_ENCLOSURE_LENGTH = 702032
+AUDIO_ENCLOSURE_URL = "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3"
+AUDIO_ENCLOSURE_LENGTH = 8945229
 
 
 def is_ai_generated(entry):
@@ -83,6 +84,75 @@ def parse_playlist_entries():
     return parse_public_playlist_feed()
 
 
+def select_audio_format(formats):
+    candidates = []
+    for f in formats:
+        url = f.get("url")
+        if not url:
+            continue
+
+        acodec = f.get("acodec")
+        if not acodec or acodec == "none":
+            continue
+
+        protocol = f.get("protocol")
+        if protocol not in ("https", "http"):
+            continue
+
+        ext = (f.get("ext") or "").lower()
+        if ext in ("mhtml", "webp"):
+            continue
+
+        if ext in ("m4a", "mp4"):
+            mime = "audio/mp4"
+        elif ext == "webm":
+            mime = "audio/webm"
+        elif ext == "opus":
+            mime = "audio/opus"
+        elif ext == "aac":
+            mime = "audio/aac"
+        elif ext == "mp3":
+            mime = "audio/mpeg"
+        else:
+            mime = f"audio/{ext}"
+
+        abr = f.get("abr") or f.get("tbr") or 0
+        filesize = f.get("filesize") or f.get("filesize_approx") or 0
+        candidates.append((abr, filesize, url, mime))
+
+    if not candidates:
+        return None, None, None
+
+    candidates.sort(key=lambda item: (item[0] or 0, item[1] or 0), reverse=True)
+    _, filesize, url, mime = candidates[0]
+    return url, str(filesize or 0), mime
+
+
+def extract_audio_stream(video_url):
+    YDL_OPTS = {
+        "quiet": True,
+        "skip_download": True,
+        "noplaylist": True,
+        "nocheckcertificate": True,
+        "ignoreerrors": True,
+        "extract_flat": False,
+    }
+
+    try:
+        with YoutubeDL(YDL_OPTS) as ydl:
+            info = ydl.extract_info(video_url, download=False)
+
+        if not info:
+            return None, None, None
+
+        formats = info.get("formats") or []
+        return select_audio_format(formats)
+    except Exception as e:
+        print("yt-dlp failed:", video_url)
+        print(e)
+        return None, None, None
+
+
 def feed_items(xml):
     items = []
     try:
@@ -119,17 +189,31 @@ fg.podcast.itunes_author("PMO India")
 fg.podcast.itunes_category("Government")
 fg.podcast.itunes_explicit("no")
 fg.podcast.itunes_summary("Hindi editions of Mann Ki Baat")
+fg.podcast.itunes_owner(name="PMO India", email="contact@animesh.github.io")
 fg.podcast.itunes_image(ARTWORK_URL)
 
 count = 0
 for entry in entries:
+    print()
+    print("Processing:", entry["title"])
+
+    audio_url, audio_size, mime = extract_audio_stream(entry["link"])
+
+    if audio_url:
+        print(" -> actual stream selected")
+    else:
+        print(" -> no usable stream; falling back to sample audio")
+        audio_url = AUDIO_ENCLOSURE_URL
+        audio_size = AUDIO_ENCLOSURE_LENGTH
+        mime = "audio/mpeg"
+
     fe = fg.add_entry()
     guid = hashlib.md5(entry["link"].encode()).hexdigest()
     fe.id(guid)
     fe.guid(guid, permalink=False)
     fe.title(entry["title"])
     fe.link(href=entry["link"])
-    fe.enclosure(AUDIO_ENCLOSURE_URL, AUDIO_ENCLOSURE_LENGTH, "audio/mpeg")
+    fe.enclosure(audio_url, audio_size, mime)
     if entry.get("published"):
         fe.pubDate(entry["published"])
     count += 1
