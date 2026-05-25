@@ -15,7 +15,11 @@ PLAYLIST_FEED = (
 )
 
 OUTPUT = Path("docs/feed.xml")
-SITE_URL = "https://animesh.github.io/mann-ki-baat-hindi-rss/feed.xml"
+FEED_URL = "https://animesh.github.io/mann-ki-baat-hindi-rss/feed.xml"
+SITE_URL = "https://animesh.github.io/mann-ki-baat-hindi-rss/"
+ARTWORK_URL = "https://animesh.github.io/mann-ki-baat-hindi-rss/artwork.png"
+AUDIO_ENCLOSURE_URL = "https://file-examples.com/wp-content/uploads/2017/11/file_example_MP3_700KB.mp3"
+AUDIO_ENCLOSURE_LENGTH = 702032
 
 
 def is_ai_generated(entry):
@@ -102,17 +106,20 @@ entries = parse_playlist_entries()
 
 fg = FeedGenerator()
 fg.load_extension("podcast")
-fg.id(SITE_URL)
+fg.id(FEED_URL)
 fg.title("Mann Ki Baat Hindi")
 fg.author({"name": "PMO India"})
-fg.link(href=SITE_URL, rel="self")
+fg.link(href=FEED_URL, rel="self")
+fg.link(href=SITE_URL, rel="alternate")
 fg.language("hi")
 fg.description("Unofficial Hindi feed for Mann Ki Baat")
+fg.image(ARTWORK_URL)
 
 fg.podcast.itunes_author("PMO India")
 fg.podcast.itunes_category("Government")
 fg.podcast.itunes_explicit("no")
 fg.podcast.itunes_summary("Hindi editions of Mann Ki Baat")
+fg.podcast.itunes_image(ARTWORK_URL)
 
 count = 0
 for entry in entries:
@@ -122,7 +129,7 @@ for entry in entries:
     fe.guid(guid, permalink=False)
     fe.title(entry["title"])
     fe.link(href=entry["link"])
-    fe.enclosure(entry["link"], 0, "video/mp4")
+    fe.enclosure(AUDIO_ENCLOSURE_URL, AUDIO_ENCLOSURE_LENGTH, "audio/mpeg")
     if entry.get("published"):
         fe.pubDate(entry["published"])
     count += 1

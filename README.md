@@ -6,7 +6,7 @@ Automatically generates a Hindi-only RSS feed for Mann Ki Baat and publishes at 
 
 - Generates a Hindi-only RSS feed from a public YouTube playlist
 - Filters out AI-generated and reupload entries from the playlist
-- Includes podcast enclosures so feed validators detect episodes
+- Includes podcast enclosures and podcast artwork metadata for validator compatibility
 - Writes `docs/feed.xml` for GitHub Pages publication
 - Auto-updates on:
   - every push
