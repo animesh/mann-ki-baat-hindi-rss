@@ -146,7 +146,17 @@ def extract_audio_stream(video_url):
             return None, None, None
 
         formats = info.get("formats") or []
-        return select_audio_format(formats)
+        if formats:
+            return select_audio_format(formats)
+
+        # Fallback to the direct info URL if no formats are returned.
+        url = info.get("url")
+        acodec = info.get("acodec")
+        if url and acodec and acodec != "none":
+            size = str(info.get("filesize") or info.get("filesize_approx") or 0)
+            return url, size, "audio/mpeg"
+
+        return None, None, None
     except Exception as e:
         print("yt-dlp failed:", video_url)
         print(e)
